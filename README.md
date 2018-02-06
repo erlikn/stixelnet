@@ -1,2 +1,2 @@
-# stixelnet
-StixelNet implementation in Tensorflow
+# tf_do_clsm
+Regression as Classification
