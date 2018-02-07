@@ -406,3 +406,47 @@ def tfrecord_writer_ntuple_classification(fileID, pcl, imgDepth, tMatTarget, bit
         }))
     writer.write(example.SerializeToString())
     writer.close()
+
+
+
+
+
+
+############################################
+############################################
+############                  ##############
+############    StixelNet     ##############
+############                  ##############
+############################################
+############################################
+def parse_example_proto_stixelnet(exampleSerialized, **kwargs):
+    """
+        Converts a dataset to tfrecords
+        fileID = seqID, imgID, index
+        image => int8 a.k.a. char  (rows_370 x cols_24 x rgb_3)
+        bitTarget => (ouput_50)
+    """
+    """
+        KWARGS:
+            imageDepthRows = 370
+            imageDepthCols = 24
+            imageDepthChannels = 3
+            bitTarget = 50
+    """
+    featureMap = {
+        'fileID': tf.FixedLenFeature([3], dtype=tf.int64),
+        'image': tf.FixedLenFeature([], dtype=tf.string),
+        'bitTarget': tf.FixedLenFeature([], dtype=tf.string),
+        }
+    features = tf.parse_single_example(exampleSerialized, featureMap)
+    # seqID, i, i+1
+    fileID = features['fileID']
+    # (rows_128 x cols_512 x n)
+    images = _decode_byte_image(features['images'],
+                                kwargs.get('imageDepthRows'),
+                                kwargs.get('imageDepthCols'),
+                                kwargs.get('imageDepthChannels'))
+    # (size_50)
+    bitTarget = _decode_byte_string(features['bitTarget'])
+    
+    return images, bitTarget, fileID

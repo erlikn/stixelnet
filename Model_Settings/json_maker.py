@@ -33,8 +33,8 @@ reCompileJSON = True
 def write_stixelnet(runName):
     dataLocal = {
         # Data Parameters
-        'numTrainDatasetExamples' : 6000,
-        'numTestDatasetExamples' : 800,
+        'numTrainDatasetExamples' : 6000,# -> 331K ground truth columns generated
+        'numTestDatasetExamples' : 800,# -> 57k ground truth columns generated
         'trainDataDir' : '../Data/train_tfrecords',
         'testDataDir' : '../Data/test_tfrecords',
         'trainLogDir' : trainLogDirBase+'',

@@ -61,6 +61,9 @@ def inference(images, **kwargs): #batchSize=None, phase='train', outLayer=[13,13
     # # calc batch norm CONV_1
     # if kwargs.get('batchNorm'):
     #     fireOut = model_base.batch_norm('batchnorm1', fireOut, dtype)
+    ###### Pooling1 8x4 with stride 8x4
+    pool = tf.nn.max_pool(fireOut, ksize=[1, 8, 4, 1], strides=[1, 8, 4, 1],
+                          padding='SAME', name='maxpool1')
     ############# CONV_2
     fireOut, prevExpandDim = model_base.conv_fire_module('conv2', fireOut, prevExpandDim,
                                                                   {'cnn3x5': modelShape[1]},
@@ -69,8 +72,8 @@ def inference(images, **kwargs): #batchSize=None, phase='train', outLayer=[13,13
     # if kwargs.get('batchNorm'):
     #     fireOut = model_base.batch_norm('batchnorm2', fireOut, dtype)
     ###### Pooling1 8x4 with stride 8x4
-    pool = tf.nn.max_pool(fireOut, ksize=[1, 8, 4, 1], strides=[1, 8, 4, 1],
-                          padding='SAME', name='maxpool1')
+    pool = tf.nn.max_pool(fireOut, ksize=[1, 4, 3, 1], strides=[1, 4, 3, 1],
+                          padding='SAME', name='maxpool2')
 
 
 

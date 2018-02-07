@@ -176,7 +176,7 @@ def fetch_inputs(numPreprocessThreads=None, numReaders=1, **kwargs):
         sampleData = []
         for _ in range(numPreprocessThreads):
             # Parse a serialized Example proto to extract the image and metadata.
-            images, pcl, target, bitTarget, rngs, tfrecFileIDs = tfrecord_io.parse_example_proto_ntuple_classification(exampleSerialized, **kwargs)
+            images, bitTarget, tfrecFileIDs = tfrecord_io.parse_example_proto_stixelnet(exampleSerialized, **kwargs)
             sampleData.append([images, pcl, target, bitTarget, rngs, tfrecFileIDs])
         
         batchImages, batchPcl, batchTarget, batchBitTarget, batchRngs, batchTFrecFileIDs = tf.train.batch_join(sampleData,
