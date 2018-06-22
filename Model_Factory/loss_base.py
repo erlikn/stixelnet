@@ -158,6 +158,15 @@ def _params_classification_softmaxCrossentropy_loss_nTuple(targetP, targetT, nTu
     #smce_loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=targetP, labels=targetT, dim=2), name="loss_smce_sum")
     return smce_loss
 
+def _stixelnet_pl_loss(pred, tval, kwargs.get('activeBatchSize'))
+    # find argmax of pred
+    i = tf.argmax(pred)
+    # then use centroid of bins to get the result
+    # what is y, what is y_hat
+    p_y = pred[i]*((c[i+1]-y)/(c[i+1]-c[i])) + pred[i+1]*((y-c[i])/(c[i+1]-c[i]))
+    pl_loss = -np.log(p_y)
+    return
+
 def loss(pred, tval, **kwargs):
     """
     Choose the proper loss function and call it.
@@ -180,4 +189,6 @@ def loss(pred, tval, **kwargs):
             return _params_classification_softmaxCrossentropy_loss_nTuple(pred, tval, 1, kwargs.get('activeBatchSize'))
         else:
             return _params_classification_softmaxCrossentropy_loss_nTuple(pred, tval, kwargs.get('numTuple'), kwargs.get('activeBatchSize'))
+    if lossFunction == 'stixelnet_pl_loss':
+        return _stixelnet_pl_loss(pred, tval, kwargs.get('activeBatchSize'))
             

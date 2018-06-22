@@ -76,10 +76,12 @@ def write_stixelnet(runName):
     dataLocal['writeWarpedImages'] = True
     # Iterative model only changes the wayoutput is written, 
     # so any model can be used by ease
-
     reCompileITR = True
     NOreCompileITR = False
 
+    # binCenters --> 50 centers
+    dataLocal['binCenters'] = [1,3,5,7,9,11,13,15,17,19]
+    
     if runName == '180206':
         stx_180206(reCompileITR, trainLogDirBase, testLogDirBase, runName, dataLocal)
     #elif runName == '171003_ITR_B': # using 170706_ITR_B but with loss for all n-1 tuples

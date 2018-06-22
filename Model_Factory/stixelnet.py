@@ -54,6 +54,7 @@ def inference(images, **kwargs): #batchSize=None, phase='train', outLayer=[13,13
 
     batchSize = kwargs.get('activeBatchSize', None)
 
+    #######################################
     ############# CONV_1
     fireOut, prevExpandDim = model_base.conv_fire_module('conv1', images, kwargs.get('imageDepthChannels'),
                                                                   {'cnn11x5': modelShape[0]},
@@ -61,9 +62,12 @@ def inference(images, **kwargs): #batchSize=None, phase='train', outLayer=[13,13
     # # calc batch norm CONV_1
     # if kwargs.get('batchNorm'):
     #     fireOut = model_base.batch_norm('batchnorm1', fireOut, dtype)
+
     ###### Pooling1 8x4 with stride 8x4
-    pool = tf.nn.max_pool(fireOut, ksize=[1, 8, 4, 1], strides=[1, 8, 4, 1],
+    fireOut = tf.nn.max_pool(fireOut, ksize=[1, 8, 4, 1], strides=[1, 8, 4, 1],
                           padding='SAME', name='maxpool1')
+    #######################################
+    #######################################
     ############# CONV_2
     fireOut, prevExpandDim = model_base.conv_fire_module('conv2', fireOut, prevExpandDim,
                                                                   {'cnn3x5': modelShape[1]},
@@ -71,96 +75,48 @@ def inference(images, **kwargs): #batchSize=None, phase='train', outLayer=[13,13
     # # calc batch norm CONV_2
     # if kwargs.get('batchNorm'):
     #     fireOut = model_base.batch_norm('batchnorm2', fireOut, dtype)
+
     ###### Pooling1 8x4 with stride 8x4
-    pool = tf.nn.max_pool(fireOut, ksize=[1, 4, 3, 1], strides=[1, 4, 3, 1],
+    fireOut = tf.nn.max_pool(fireOut, ksize=[1, 4, 3, 1], strides=[1, 4, 3, 1],
                           padding='SAME', name='maxpool2')
 
-
-
-
-    ############# CONV5
-    fireOut, prevExpandDim = model_base.conv_fire_inception_module('conv5', pool, prevExpandDim,
-                                                                  {'cnn1x1': modelShape[4], 'cnn3x3': modelShape[4], 'cnn5x5': modelShape[4]},
-                                                         wd, **kwargs)
-    # calc batch norm CONV5
-    if kwargs.get('batchNorm'):
-        fireOut = model_base.batch_norm('batchnorm5', fireOut, dtype)
-    ############# CONV6
-    fireOut, prevExpandDim = model_base.conv_fire_module('conv6', fireOut, prevExpandDim,
-                                                                  {'cnn1x1': modelShape[5]},
-                                                         wd, **kwargs)
-    # calc batch norm CONV6
-    if kwargs.get('batchNorm'):
-        fireOut = model_base.batch_norm('batchnorm6', fireOut, dtype)
-    ###### Pooling2 2x2 wit stride 2
-    pool = tf.nn.max_pool(fireOut, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1],
-                          padding='SAME', name='maxpool3')
-    ############# CONV7
-    fireOut, prevExpandDim = model_base.conv_fire_inception_module('conv7', pool, prevExpandDim,
-                                                                  {'cnn1x1': modelShape[6], 'cnn3x3': modelShape[6], 'cnn5x5': modelShape[6]},
-                                                         wd, **kwargs)
-    # calc batch norm CONV7
-    if kwargs.get('batchNorm'):
-        fireOut = model_base.batch_norm('batchnorm7', fireOut, dtype)
-    ############# CONV8
-    fireOut, prevExpandDim = model_base.conv_fire_module('conv8', fireOut, prevExpandDim,
-                                                                  {'cnn1x1': modelShape[7]},
-                                                         wd, **kwargs)
-    # calc batch norm CONV8
-    if kwargs.get('batchNorm'):
-        fireOut = model_base.batch_norm('batchnorm8', fireOut, dtype)
-    ###### DROPOUT after CONV8
-    with tf.name_scope("drop"):
-        keepProb = tf.constant(kwargs.get('dropOutKeepRate') if kwargs.get('phase') == 'train' else 1.0, dtype=dtype)
-        fireOut = tf.nn.dropout(fireOut, keepProb, name="dropout")
+    #######################################
     ###### Prepare for fully connected layers
     # Reshape firout - flatten
     prevExpandDim = (kwargs.get('imageDepthRows')//(2*2*2))*(kwargs.get('imageDepthCols')//(2*2*2))*prevExpandDim
-    fireOutFlat = tf.reshape(fireOut, [batchSize, -1])
+    fireOut = tf.reshape(fireOut, [batchSize, -1])
 
+    #######################################
     ############# FC1 layer with 1024 outputs
-    fireOut, prevExpandDim = model_base.fc_fire_module('fc1', fireOutFlat, prevExpandDim,
-                                                       {'fc': modelShape[8]},
+    fireOut, prevExpandDim = model_base.fc_fire_module('fc1', fireOut, prevExpandDim,
+                                                       {'fc': modelShape[2]},
                                                        wd, **kwargs)
     # calc batch norm FC1
-    if kwargs.get('batchNorm'):
-        fireOut = model_base.batch_norm('batchnorm9', fireOut, dtype)
-    ############# FC2 layer with 8 outputs
-    fireOut, prevExpandDim = model_base.fc_regression_module('fc2', fireOut, prevExpandDim,
+    #if kwargs.get('batchNorm'):
+    #    fireOut = model_base.batch_norm('batchnorm9', fireOut, dtype)
+    ###### DROPOUT after FC1
+    with tf.name_scope("drop"):
+        keepProb = tf.constant(kwargs.get('dropOutKeepRate') if kwargs.get('phase') == 'train' else 1.0, dtype=dtype)
+        fireOut = tf.nn.dropout(fireOut, keepProb, name="dropout")
+    
+    #######################################
+    #######################################
+    ############# FC2 layer with 2048 outputs
+    fireOut, prevExpandDim = model_base.fc_fire_module('fc2', fireOut, prevExpandDim,
+                                                             {'fc': modelShape[3]},
+                                                             wd, **kwargs)
+    ###### DROPOUT after FC2
+    with tf.name_scope("drop"):
+        keepProb = tf.constant(kwargs.get('dropOutKeepRate') if kwargs.get('phase') == 'train' else 1.0, dtype=dtype)
+        fireOut = tf.nn.dropout(fireOut, keepProb, name="dropout")
+
+    #######################################
+    #######################################
+    ############# FC3 layer with 50 outputs ---- OUTPUT LAYER
+    fireOut, prevExpandDim = model_base.fc_fire_module('fc3_output', fireOut, prevExpandDim,
                                                              {'fc': kwargs.get('networkOutputSize')},
                                                              wd, **kwargs)
-
-    ###### Normalize vectors to have output [0~1] for each batch
-    # fireout is [16] x [192] 
-    # fireout should be [16] x [6] x [32] x [1] => now normalize for each batch and each row
-    # To do so, we could rearrange everything in [16 x 6] x [32] and calculate softmax for each row and return back to original
-    # kwargs.get('networkOutputSize')/kwargs.get('logicalOutputSize') = kwargs.get('classificationModel')['binSize']
-    #fireOut = tf.reshape(fireOut, [kwargs.get('activeBatchSize')*kwargs.get('logicalOutputSize'), np.int32(kwargs.get('networkOutputSize')/kwargs.get#('logicalOutputSize'))])
-    #fireOut.set_shape([kwargs.get('activeBatchSize')*kwargs.get('logicalOutputSize'), np.int32(kwargs.get('networkOutputSize')/kwargs.get('logicalOutputSize'))])
-    #fireOut = tf.nn.softmax(fireOut)
-
-    #### NOW CONVERT IT TO Correct format
-    # kwargs.get('networkOutputSize')/kwargs.get('logicalOutputSize') = kwargs.get('classificationModel')['binSize']
-    
-    if kwargs.get('lastTuple'):
-        fireOut = tf.reshape(fireOut, [kwargs.get('activeBatchSize'), 
-                                       kwargs.get('logicalOutputSize'), 
-                                       np.int32(kwargs.get('networkOutputSize')/(kwargs.get('logicalOutputSize'))), 
-                                       1])
-        fireOut.set_shape([kwargs.get('activeBatchSize'), 
-                           kwargs.get('logicalOutputSize'), 
-                           np.int32(kwargs.get('networkOutputSize')/(kwargs.get('logicalOutputSize'))), 
-                           1])
-    else:
-        fireOut = tf.reshape(fireOut, [kwargs.get('activeBatchSize'), 
-                                       kwargs.get('logicalOutputSize'), 
-                                       np.int32(kwargs.get('networkOutputSize')/(kwargs.get('logicalOutputSize')*(kwargs.get('numTuple')-1))), 
-                                       (kwargs.get('numTuple')-1)])
-        fireOut.set_shape([kwargs.get('activeBatchSize'), 
-                           kwargs.get('logicalOutputSize'), 
-                           np.int32(kwargs.get('networkOutputSize')/(kwargs.get('logicalOutputSize')*(kwargs.get('numTuple')-1))), 
-                           kwargs.get('numTuple')-1])
-    
+    #######################################
     return fireOut
 
 def loss(pred, target, **kwargs): # batchSize=Sne

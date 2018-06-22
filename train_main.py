@@ -99,7 +99,7 @@ def train(modelParams):
                                      trainable=False)
 
         # Get images and transformation for model_cnn.
-        images, pclA, targetT, bitTarget, rngs, tfrecFileIDs = data_input.inputs(**modelParams)
+        images, bitTarget, tfrecFileIDs = data_input.inputs(**modelParams)
         print('Input        ready')
         # Build a Graph that computes the HAB predictions from the
         # inference model.
@@ -118,7 +118,6 @@ def train(modelParams):
             # for training on all tuples
             loss = model_cnn.loss(targetP, bitTarget, **modelParams)
         print('--------targetP', targetP.get_shape())
-        print('--------rngs', rngs.get_shape())
         return
 
         # Build a Graph that trains the model with one batch of examples and
