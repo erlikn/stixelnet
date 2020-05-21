@@ -158,14 +158,76 @@ def _params_classification_softmaxCrossentropy_loss_nTuple(targetP, targetT, nTu
     #smce_loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=targetP, labels=targetT, dim=2), name="loss_smce_sum")
     return smce_loss
 
-def _stixelnet_pl_loss(pred, tval, kwargs.get('activeBatchSize'))
-    # find argmax of pred
-    i = tf.argmax(pred)
-    # then use centroid of bins to get the result
-    # what is y, what is y_hat
-    p_y = pred[i]*((c[i+1]-y)/(c[i+1]-c[i])) + pred[i+1]*((y-c[i])/(c[i+1]-c[i]))
-    pl_loss = -np.log(p_y)
-    return
+def _stixelnet_pl_loss(pred, label):
+    '''
+    stixelnet piece-wise linear probability loss
+    Input:
+        pred_logit :    prediction logits (n)
+        label_prob :    label probabilities (n)
+    '''
+    #### regularization loss --- adds automatically if defined in the model def
+    reg_loss = sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+    tf.summary.scalar('loss/regularization', reg_loss)
+    #### pl loss
+    pred_logit = pred['seg_mask']
+    # apply soft-max on pred
+    pred_prob = tf.nn.softmax(pred_logit)    
+    # get label_prob
+    label_prob = label['prob_pl']
+    tf.summary.histogram('pl/prob_pl', label_prob)
+    tf.summary.histogram('pl/pred_logit', pred_logit)
+    tf.summary.histogram('pl/pred_prob', pred_prob)
+    # dot-product pred and label and take log to get loss
+    #pl_loss = tf.reduce_mean(tf.log(tf.reduce_sum(tf.multiply(pred_prob, label_prob), axis=0)+1))
+    pl_loss = tf.reduce_mean(tf.reduce_sum(tf.multiply(pred_prob, label_prob), axis=0))
+    tf.summary.scalar('loss/pl', pl_loss)
+    #### total loss
+    tot_loss = pl_loss+reg_loss
+    tf.summary.scalar('loss/total', tot_loss)
+    return pl_loss+reg_loss
+
+def _stixelnet_kl_loss(pred, label):
+    '''
+    stixelnet Kullback-Leibler divergence loss
+    Input:
+        pred_logit :    prediction logits (2) alpha_0 (confidence), beta_1 (transition point)
+        label_prob :    label probabilities (256)  
+    '''
+    #### regularization loss --- adds automatically if defined in the model def
+    reg_loss = sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+    tf.summary.scalar('loss/regularization', reg_loss)
+    #### kl loss
+    label_kl = label['indices']
+    label_kl_prob = label['gt_kl']
+    tf.summary.histogram('kl/indices', label_kl)
+    tf.summary.histogram('kl/gt_kl_prob', label_kl_prob)
+    # pred['seg_mask'][0] is alpha, which is confidence between [0,1]
+    # pred['seg_mask'][1] is beta, which is index but sampled betwen [0,1] multiplied by 51 (indicies) gives the actual estimated index
+    #pred_prob = 1 / (1 + tf.exp(tf.multiply( -tf.reshape(pred['seg_mask'][:, 0], [-1, 1]), 
+    #                                          label_kl - tf.reshape(pred['seg_mask'][:,1]*51, [-1, 1]) 
+    #                                        ) 
+    #                            ) 
+    #                )
+    pred_prob = 1 / (1 + tf.exp(tf.multiply( tf.reshape(pred['seg_mask'][:, 0], [-1, 1]), 
+                                             label_kl - tf.reshape(pred['seg_mask'][:,1]*51, [-1, 1]) 
+                                            ) 
+                                ) 
+                    )
+    tf.summary.histogram('kl/pred_alpha', tf.reshape(pred['seg_mask'][:, 0], [-1, 1]))
+    tf.summary.histogram('kl/pred_beta', tf.reshape(pred['seg_mask'][:, 1], [-1, 1]))
+    tf.summary.histogram('kl/pred_prob', pred_prob)
+    #kl_loss = label_kl_prob * tf.log(label_kl_prob/pred_prob)
+    #kl_loss = tf.reduce_mean( tf.reduce_sum(tf.multiply(label_kl_prob, tf.log(label_kl_prob))) - tf.reduce_sum(tf.multiply(label_kl_prob, tf.log(pred_prob)) )
+    #kl_loss = tf.reduce_mean( tf.reduce_sum(label_kl) - tf.reduce_sum(tf.multiply(label_kl_prob, tf.log(pred_prob)) ) )
+    #kl_loss = - tf.reduce_mean(tf.multiply(label_kl_prob, tf.log(pred_prob)) ) 
+    kld = tf.keras.losses.KLDivergence()
+    kl_loss = kld(label_kl_prob, pred_prob)
+    tf.summary.scalar('loss/kl', kl_loss)
+    #### total loss
+    tot_loss = kl_loss+reg_loss
+    tf.summary.scalar('loss/total', tot_loss)
+    return kl_loss+reg_loss
+
 
 def loss(pred, tval, **kwargs):
     """
@@ -190,5 +252,7 @@ def loss(pred, tval, **kwargs):
         else:
             return _params_classification_softmaxCrossentropy_loss_nTuple(pred, tval, kwargs.get('numTuple'), kwargs.get('activeBatchSize'))
     if lossFunction == 'stixelnet_pl_loss':
-        return _stixelnet_pl_loss(pred, tval, kwargs.get('activeBatchSize'))
+        return _stixelnet_pl_loss(pred, tval)
+    if lossFunction == 'stixelnet_kl_loss':
+        return _stixelnet_pl_loss(pred, tval)
             
